@@ -21,10 +21,10 @@ An event-driven pipeline that intercepts incoming customer messages, dynamically
 - **Core Pipeline Pipeline Flow:**
   1. **Ingestion:** A `POST` Webhook listener intercepts incoming payloads containing customer messages.
   2. **Defensive Validation:** An `If` conditional node flags and throws an API error response if critical values (`email` or `message`) are missing.
-  3. **Intelligent Intent Parsing:** Validated text is routed to a **LangChain AI Agent** backed by Gemini. The agent runs zero-shot classification to group the inquiry (*Refund Request, Order Issue, Pricing, General Inquiry, or Spam*) and assigns a corresponding priority matrix status (*High, Medium, Low*).
+  3. **Intelligent Intent Parsing:** The agent runs zero-shot classification to group the inquiry (*Refund Request, Order Issue, Pricing, General Inquiry, or Spam*) and assigns a corresponding priority status.
   4. **Data Normalization:** A JavaScript script sanitizes and extracts the structured JSON response using regex logic to ensure schema consistency.
   5. **Persistence:** The processed ticket logs dynamically to a Google Sheets master dashboard.
-  6. **Real-time Alerting:** A secondary conditional routing block isolates `High` priority states (e.g., Refund Requests) and instantly alerts internal teams via the **Gmail API**, while concurrently returning automated receipt responses back to the webhook client.
+  6. **Real-time Alerting:** A secondary conditional routing block isolates `High` priority states and instantly alerts internal teams via the Gmail API, while concurrently returning automated receipt responses back to the webhook client.
 
 ---
 
@@ -34,7 +34,7 @@ An automated extraction pipeline designed to intercept structured structural inp
 - **File:** `workflows/sql_lead_data_automation.json`
 - **Core Pipeline Flow:**
   1. **Ingestion:** Listens for operational metadata updates via a customized secure webhook path (`/lead-db`).
-  2. **Entity Extraction & Risk Scoring:** The text payload routes to an operational AI agent that strips conversational padding and runs Named Entity Recognition (NER) to locate parameters like `Product name`, `Order ID`, and target `Deadlines`. Concurrently, it maps financial and operational constraints into a linear numeric `urgency_score` (1-10).
+  2. **Entity Extraction & Risk Scoring:** The text payload routes to an operational AI agent that strips conversational padding and runs Named Entity Recognition (NER) to locate parameters like Product name etc. it maps financial and operational constraints into a linear numeric `urgency_score`.
   3. **Robust JSON Parsing:** A native JavaScript node processes the model's output block, running a try/catch exception-handling routine over the data parser to guarantee string safety before writing to the database.
   4. **Relational Database Sync:** The structured entity properties (`extracted_entities` and `urgency_score`) are mapped onto defined tables and securely appended directly to a live **MySQL database instance**.
   5. **Client Response:** Issues an explicit JSON synchronization receipt back to the connection origin verifying data integrity.
