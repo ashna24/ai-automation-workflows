@@ -1,0 +1,446 @@
+{
+  "name": "AI Customer Support Automation System",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "get-data",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        256,
+        -16
+      ],
+      "id": "b07482d5-af54-456a-b353-ca91cc89043d",
+      "name": "Webhook",
+      "webhookId": "9b748f27-5385-4bb9-85f6-8d62837f9a38"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"category\": \"{{ $json.category }}\",\n  \"priority\": \"{{ $json.priority }}\",\n  \"response\": \"{{ $json.response }} \"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2752,
+        112
+      ],
+      "id": "a21e2159-5a78-46d8-955a-83b282837eff",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "320f2990-c535-467b-ba3b-5bc9003b2346",
+              "leftValue": "={{ $json.body.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "ef19b15f-1820-4861-a92a-8ab01ea34370",
+              "leftValue": "={{ $json.body.message }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        512,
+        -16
+      ],
+      "id": "9b7f7c97-eda9-4c76-a28e-08a24c3b7610",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"error\",\n  \"error message\" : \"email or message is missing\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        944,
+        -400
+      ],
+      "id": "3276e65c-ca75-48e3-a39e-0f213754f0a9",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a customer support assistand who needs to categorize the message in one of the following categories:\nOrder Issue,Refund Request,Pricing Question,General Inquiry, or Spam.\nThis is the message you will receive.\n {{ $json.body.message }}\n\nAfter assigning the category, convert the categories into the following fowmat:\nHigh → Refund / Order\nMedium → Pricing\nLow → General / Spam\n\nRespond your output with ONLY valid JSON.\nNo extra text.\nFormat:\n{\n  \"Category\": \"\",\n  \"Priority\": \"\"\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        880,
+        0
+      ],
+      "id": "1eb3cc63-cba1-497f-a9d1-1072cf4707ea",
+      "name": "AI Agent",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "maxTries": 4
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        864,
+        240
+      ],
+      "id": "854fc893-1ffc-4e8b-bbd1-c6e8cb414ce5",
+      "name": "Google Gemini Chat Model"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const text = $json.output || \"\";\n\n\nconst categoryMatch = text.match(/Category[:\\s\"']+(.*?)(?=[\"']?[\\s,]*$|\\n)/i);\nconst priorityMatch = text.match(/Priority[:\\s\"']+(.*?)(?=[\"']?[\\s,]*$|\\n)/i);\n\n\nconst clean = (str) => {\n  if (!str) return \"Not Found\";\n \n  return str.replace(/^[:\\s\"']+|[:\\s\"',]+$/g, '').trim();\n};\n\nreturn {\n  ...$json,\n  category: clean(categoryMatch ? categoryMatch[1] : null),\n  priority: clean(priorityMatch ? priorityMatch[1] : null),\n  raw_text_length: text.length \n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        0
+      ],
+      "id": "bc6c7373-1afc-4532-aecf-dfa7e0cbd806",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID_HERE",
+          "mode": "list",
+          "cachedResultName": "AI Customer Support Complete Automation System",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID_HERE/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ $('Webhook').item.json.body.name }}",
+            "email": "={{ $('Webhook').item.json.body.email }}",
+            "message": "={{ $('Webhook').item.json.body.message }}",
+            "category": "={{ $json.category }}",
+            "priority": "={{ $json.priority }}",
+            "timestamp": "={{ $now }}",
+            "status": "={{ \"NEW\" }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1616,
+        0
+      ],
+      "id": "3edac8d4-8bcf-45c9-852f-37668165f55b",
+      "name": "Append row in sheet"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "00a581b4-e4a1-4e50-8540-6afb46506a1a",
+              "leftValue": "={{ $json.priority.toLowerCase() }}",
+              "rightValue": "high",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1824,
+        0
+      ],
+      "id": "654adea8-0f68-498e-a823-edb0f84cce1b",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_EMAIL_HERE@gmail.com",
+        "subject": "High Priority Ticket Alert!",
+        "emailType": "text",
+        "message": "=High priority ticket: {{ $json.category }} from {{ $json.name }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2256,
+        -320
+      ],
+      "id": "8c1540e9-6a33-47f9-b141-b76aba3811de",
+      "name": "Send a message",
+      "webhookId": "c00ec223-9d6c-4697-9c1f-26acc9527744"
+    },
+    {
+      "parameters": {
+        "jsCode": "let response = \"\"\n\nif($json.category== \"Refund Request\"){\n  response = \"Our team will process your refund shortly\"\n}\nelse if($json.category== \"Order Issue\"){\n  response = \"We are checking your order status.\"\n}\nelse if ($json.category== \"Pricing Question\"){\n  response = \"Here is ouR pricing information\"\n}\nelse if ($json.category== \"General Inquiry\"){\n  response = \"Thanks for reaching out\"\n}\nelse{\n  response = \"Invalid request/ spam\"\n}\n\nreturn {\n  ...$json,\n  response\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2256,
+        112
+      ],
+      "id": "cb90bbc3-d2ad-4caa-a29e-bcd7dbe5b51c",
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8a3e4561-e2d9-40d8-b8c1-850dd6bedef9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "59cd964df1175d5e8aa645c8514eebb271434e36e8daf26a2bcfdf2e7f09b471"
+  },
+  "id": "RjwdxtrdNIehlU1j",
+  "tags": []
+}

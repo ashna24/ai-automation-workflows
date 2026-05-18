@@ -1,0 +1,15 @@
+.env
+*.env
+credentials.json
+
+#docker
+*.log
+docker-compose.override.yml
+
+# Ignore Node dependencies 
+node_modules/
+npm-debug.log*
+
+# Ignore OS specific system files
+.DS_Store
+Thumbs.db
