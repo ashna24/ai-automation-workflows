@@ -1,0 +1,258 @@
+{
+    "name": "Integrating SQL",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "lead-db",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          0
+        ],
+        "id": "73214629-2a8f-49f9-b4c1-26bfcb5cab69",
+        "name": "Webhook",
+        "webhookId": "808ca62a-9eda-4589-9ca8-d64ea67cc8b7"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "52d4ebdf-e05d-4e78-8d90-d69524d2c72a",
+                "leftValue": "={{ $json.body.email }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "empty",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          208,
+          0
+        ],
+        "id": "39d59d38-b420-46fa-84cc-b71022081181",
+        "name": "If"
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={\n  \"status\": \"error! email is missing!\"\n}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.4,
+        "position": [
+          896,
+          -224
+        ],
+        "id": "64bd871d-da2b-471a-bdf3-a1ffd77cc3ba",
+        "name": "Respond to Webhook"
+      },
+      {
+        "parameters": {
+          "table": {
+            "__rl": true,
+            "value": "leads",
+            "mode": "list",
+            "cachedResultName": "leads"
+          },
+          "dataMode": "defineBelow",
+          "valuesToSend": {
+            "values": [
+              {
+                "column": "name",
+                "value": "={{ $('If').item.json.body.name }}"
+              },
+              {
+                "column": "email",
+                "value": "={{ $('If').item.json.body.email }}"
+              },
+              {
+                "column": "message",
+                "value": "={{ $('If').item.json.body.message }}"
+              },
+              {
+                "column": "extracted_entities",
+                "value": "={{ $('Code in JavaScript').item.json.entities }}"
+              },
+              {
+                "column": "urgency_score",
+                "value": "={{ $('Code in JavaScript').item.json.score }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.mySql",
+        "typeVersion": 2.5,
+        "position": [
+          1120,
+          96
+        ],
+        "id": "9f5e3d03-1e2d-4658-89bf-0f122f7d7f73",
+        "name": "Insert rows in a table"
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Lead stored successfully!\"\n}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.4,
+        "position": [
+          1424,
+          -48
+        ],
+        "id": "fdf8853b-ccc4-4260-b41c-e2eb4f5c752f",
+        "name": "Respond to Webhook1"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "\"CRITICAL: Do not provide an introduction, explanation, or conversational text. Output ONLY a valid JSON object in the following format:\n{\n\"entities\": \"Product name, Order ID, Deadline\",\n\"score\": [Number between 1-10],\n}\"\n\nYou are an Operations Intelligence Agent. Your task is to analyze the incoming webhook data and perform three specific actions:\n\nEntity Extraction: Identify any specific 'Products', 'Order IDs', or 'Deadlines' mentioned.\n\nUrgency Scoring: Assign a score from 1–10 based on the financial risk or time sensitivity described.",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 3,
+        "position": [
+          464,
+          96
+        ],
+        "id": "e1e114e9-a0de-44e3-8585-12085c9f4034",
+        "name": "AI Agent"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "typeVersion": 1,
+        "position": [
+          448,
+          320
+        ],
+        "id": "6cfb495c-3e8d-4f69-b313-1fc509c97a21",
+        "name": "Google Gemini Chat Model"
+      },
+      {
+        "parameters": {
+          "jsCode": "// 1. Get the raw text from the AI Agent\nconst rawOutput = items[0].json.output;\n\n// 2. Use a Regex to find the JSON block if the AI added conversational text\nconst jsonMatch = rawOutput.match(/\\{[\\s\\S]*\\}/);\n\nif (jsonMatch) {\n  try {\n    // 3. Parse the cleaned string into a JSON object\n    const cleanedData = JSON.parse(jsonMatch[0]);\n\n    // 4. Return the structured data for the SQL node\n    return [{ \n      json: {\n        entities: cleanedData.entities || \"N/A\",\n        score: parseInt(cleanedData.score) || 0,\n      }\n    }];\n  } catch (error) {\n    // Fallback if parsing fails\n    return [{ json: { entities: \"Error\", score: 0, } }];\n  }\n}\n\nreturn [{ json: { entities: \"Not Found\", score: 0 } }];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          816,
+          96
+        ],
+        "id": "32905d48-7479-4f98-bfd6-eaf4e47badc4",
+        "name": "Code in JavaScript"
+      }
+    ],
+    "pinData": {},
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "If",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Insert rows in a table": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Code in JavaScript",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Google Gemini Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code in JavaScript": {
+        "main": [
+          [
+            {
+              "node": "Insert rows in a table",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "active": false,
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "versionId": "8edac2ec-d712-442e-a8de-2678335095ab",
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "59cd964df1175d5e8aa645c8514eebb271434e36e8daf26a2bcfdf2e7f09b471"
+    },
+    "id": "r6ONh01mAhSmRZmi",
+    "tags": []
+  }
